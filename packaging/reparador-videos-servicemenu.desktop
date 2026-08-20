@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Service
+X-KDE-ServiceTypes=KonqPopupMenu/Plugin,KIO/ServiceMenu
+MimeType=all/allfiles;
+Actions=repairVideo;
+
+[Desktop Action repairVideo]
+Name=Reparar con Reparador de Videos
+Icon=/home/victorecn/Proyectos/reparador-videos/gui/src-tauri/icons/128x128@2x.png
+Exec=/home/victorecn/Proyectos/reparador-videos/gui/src-tauri/target/release/gui %f

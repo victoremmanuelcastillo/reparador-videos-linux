@@ -1,0 +1,16 @@
+{
+  "name": "gui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "build:css": "tailwindcss -i ./src/styles.css -o ./src/dist.css --minify",
+    "watch:css": "tailwindcss -i ./src/styles.css -o ./src/dist.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "@tauri-apps/cli": "^2",
+    "tailwindcss": "^4.3.3"
+  }
+}

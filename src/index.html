@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="dist.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reparador de Videos</title>
+    <script type="module" src="/main.js" defer></script>
+  </head>
+
+  <body class="h-screen overflow-hidden bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100 antialiased select-none">
+    <main class="h-full flex items-center justify-center p-6">
+      <div class="w-full max-w-md h-full max-h-[680px] rounded-2xl border border-slate-700/60 bg-slate-800/60 backdrop-blur shadow-2xl p-6 flex flex-col gap-4">
+        <header class="shrink-0 flex items-center gap-3">
+          <div class="shrink-0 w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5 21 7v10l-6-3.5" />
+              <rect x="3" y="6" width="12" height="12" rx="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-base font-semibold leading-tight">Reparador de Videos</h1>
+            <p class="text-xs text-slate-400 leading-tight">Convierte videos "documento" a MP4 real</p>
+          </div>
+        </header>
+
+        <!-- Carpeta destino -->
+        <div class="shrink-0 rounded-lg bg-slate-900/60 border border-slate-700 px-3 py-2.5 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-5 h-5 text-slate-400 shrink-0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
+          </svg>
+          <div class="min-w-0 flex-1">
+            <p class="text-[11px] text-slate-500 leading-tight">Guardar en</p>
+            <p id="destDirLabel" class="text-sm text-slate-200 truncate leading-tight">Misma carpeta que cada video</p>
+          </div>
+          <button id="chooseDestBtn" class="shrink-0 text-xs text-indigo-400 hover:text-indigo-300 font-medium">Elegir…</button>
+          <button id="resetDestBtn" title="Usar por defecto" class="hidden shrink-0 text-slate-500 hover:text-slate-300 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Carpeta vigilada -->
+        <div class="shrink-0 rounded-lg bg-slate-900/60 border border-slate-700 px-3 py-2.5 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-5 h-5 text-slate-400 shrink-0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5c-4.5 0-8 3-9.5 7.5 1.5 4.5 5 7.5 9.5 7.5s8-3 9.5-7.5c-1.5-4.5-5-7.5-9.5-7.5Z" />
+            <circle cx="12" cy="12" r="2.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <div class="min-w-0 flex-1">
+            <p class="text-[11px] text-slate-500 leading-tight">Carpeta vigilada</p>
+            <p id="watchDirLabel" class="text-sm text-slate-200 truncate leading-tight">Desactivada</p>
+          </div>
+          <button id="watchToggleBtn" class="shrink-0 text-xs text-indigo-400 hover:text-indigo-300 font-medium">Activar…</button>
+        </div>
+
+        <!-- Zona: elegir/soltar archivos -->
+        <div id="dropzone" class="shrink-0 cursor-pointer rounded-xl border-2 border-dashed border-slate-600 hover:border-indigo-400 hover:bg-indigo-500/5 transition-colors py-6 px-4 flex flex-col items-center gap-1.5 text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-7 h-7 text-slate-500">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0 4 4m-4-4-4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+          </svg>
+          <p class="text-sm text-slate-300"><span class="text-indigo-400 font-medium">Elige videos</span> o arrastralos aqui</p>
+          <p class="text-xs text-slate-500">Podes elegir varios a la vez</p>
+        </div>
+
+        <!-- Cola de videos -->
+        <div id="queueList" class="hidden flex-1 min-h-0 overflow-y-auto flex flex-col gap-1.5 pr-1"></div>
+
+        <!-- Resumen -->
+        <div id="summaryPanel" class="hidden shrink-0">
+          <p id="summaryText" class="text-xs text-slate-400 text-center"></p>
+        </div>
+
+        <!-- Acciones -->
+        <div class="shrink-0 flex gap-2">
+          <button id="clearQueueBtn" class="hidden flex-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium py-2.5 transition-colors">
+            Limpiar
+          </button>
+          <button id="openResultsBtn" class="hidden flex-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium py-2.5 transition-colors">
+            Abrir carpeta
+          </button>
+          <button id="repairAllBtn" disabled class="flex-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-sm font-medium py-2.5 transition-colors">
+            Reparar
+          </button>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
