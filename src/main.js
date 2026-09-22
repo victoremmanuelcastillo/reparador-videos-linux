@@ -70,9 +70,9 @@ function statusBadgeHtml(item) {
     case "pending":
       return `<span class="text-slate-500">En espera</span>`;
     case "processing":
-      return `<span class="text-indigo-400">${Math.round(item.percent)}%</span>`;
+      return `<span class="text-indigo-400">${item.stage ? item.stage + " " : ""}${Math.round(item.percent)}%</span>`;
     case "done":
-      return `<span class="text-emerald-400">Listo</span>`;
+      return `<span class="text-emerald-400" title="${escapeHtml(item.note || "")}">Listo</span>`;
     case "error":
       return `<span class="text-red-400" title="${escapeHtml(item.error || "")}">Error</span>`;
     default:
@@ -204,6 +204,7 @@ async function processQueue() {
   for (const item of pending) {
     item.status = "processing";
     item.percent = 0;
+    item.stage = null;
     item.error = null;
     renderQueue();
 
@@ -216,6 +217,7 @@ async function processQueue() {
       item.status = "done";
       item.percent = 100;
       item.outputPath = result.output_path;
+      item.note = result.note;
     } catch (err) {
       item.status = "error";
       item.error = typeof err === "string" ? err : JSON.stringify(err);
@@ -229,12 +231,13 @@ async function processQueue() {
 }
 
 listen("repair-progress", (event) => {
-  const { id, percent } = event.payload;
+  const { id, percent, stage } = event.payload;
   const item = queue.find((f) => f.id === id);
   if (!item || item.status !== "processing") return;
   item.percent = percent;
+  if (stage) item.stage = stage;
   const badge = document.getElementById(`status-${id}`);
-  if (badge) badge.textContent = `${Math.round(percent)}%`;
+  if (badge) badge.textContent = `${item.stage ? item.stage + " " : ""}${Math.round(percent)}%`;
 });
 
 dropzone.addEventListener("click", pickFiles);

@@ -1,3 +1,4 @@
+mod recover;
 mod tray;
 mod watcher;
 
@@ -16,12 +17,44 @@ use watcher::WatchState;
 struct RepairProgress {
     id: String,
     percent: f64,
+    stage: Option<String>,
 }
 
 #[derive(Serialize)]
 struct RepairOutcome {
     output_path: String,
     size_bytes: u64,
+    note: Option<String>,
+}
+
+/// Fallback para videos sin `moov` (descarga cortada): ffmpeg no puede hacer remux, se reconstruye el
+/// indice desde el `mdat` crudo. Ver `recover.rs`.
+async fn recover_video(
+    app: AppHandle,
+    id: String,
+    input: String,
+    output: std::path::PathBuf,
+) -> Result<RepairOutcome, String> {
+    let (app_r, id_r, out_r) = (app.clone(), id.clone(), output.clone());
+    let recovered = tauri::async_runtime::spawn_blocking(move || {
+        let report = |percent: f64, stage: &str| {
+            let _ = app_r.emit(
+                "repair-progress",
+                RepairProgress { id: id_r.clone(), percent, stage: Some(stage.to_string()) },
+            );
+        };
+        recover::rebuild(Path::new(&input), &out_r, &report)
+    })
+    .await
+    .map_err(|e| format!("Fallo la reconstruccion: {e}"))??;
+
+    let meta = std::fs::metadata(&output).map_err(|e| format!("No se genero el archivo de salida: {e}"))?;
+    let _ = app.emit("repair-progress", RepairProgress { id, percent: 100.0, stage: None });
+    Ok(RepairOutcome {
+        output_path: output.to_string_lossy().to_string(),
+        size_bytes: meta.len(),
+        note: Some(recovered.note),
+    })
 }
 
 async fn probe_duration_secs(path: &str) -> Option<f64> {
@@ -105,7 +138,7 @@ async fn repair_video(
                     };
                     let _ = app_progress.emit(
                         "repair-progress",
-                        RepairProgress { id: id_progress.clone(), percent },
+                        RepairProgress { id: id_progress.clone(), percent, stage: None },
                     );
                 }
             }
@@ -122,6 +155,12 @@ async fn repair_video(
     let _ = progress_task.await;
 
     if !status.success() {
+        if stderr_buf.contains("moov atom not found") {
+            let output = out_dir.join(format!("{stem}_reparado.mp4"));
+            return recover_video(app, id, input_path, output).await.map_err(|e| {
+                format!("El video no tiene indice (moov) y la reconstruccion fallo:\n{e}")
+            });
+        }
         let tail: Vec<&str> = stderr_buf.lines().rev().take(6).collect();
         let tail: String = tail.into_iter().rev().collect::<Vec<_>>().join("\n");
         return Err(format!(
@@ -140,11 +179,12 @@ async fn repair_video(
         return Err("El archivo reparado quedo vacio. Los datos originales pueden faltar.".to_string());
     }
 
-    let _ = app.emit("repair-progress", RepairProgress { id, percent: 100.0 });
+    let _ = app.emit("repair-progress", RepairProgress { id, percent: 100.0, stage: None });
 
     Ok(RepairOutcome {
         output_path: output_str,
         size_bytes: meta.len(),
+        note: None,
     })
 }
 
