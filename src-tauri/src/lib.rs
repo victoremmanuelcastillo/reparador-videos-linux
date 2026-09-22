@@ -154,8 +154,21 @@ async fn repair_video(
         .map_err(|e| format!("Error esperando a ffmpeg: {e}"))?;
     let _ = progress_task.await;
 
+    // ffmpeg no siempre reporta la falta de indice (moov) de la misma forma: a veces falla con
+    // "moov atom not found", a veces con otro texto ("missing mandatory atoms, broken header"...),
+    // y a veces ni siquiera falla (exit 0) pero el remux copia casi nada util porque no tenia de
+    // donde sacar el indice — el archivo de salida queda minusculo frente al original. Cualquiera
+    // de esas tres señales dispara la reconstruccion.
+    let index_missing_text = stderr_buf.contains("moov atom not found")
+        || stderr_buf.contains("missing mandatory atoms")
+        || stderr_buf.contains("moov")
+        || stderr_buf.contains("broken header");
+    let input_size = std::fs::metadata(&input_path).map(|m| m.len()).unwrap_or(0);
+    let output_len = std::fs::metadata(&output).map(|m| m.len()).unwrap_or(0);
+    let output_too_small = input_size > 2_000_000 && output_len < input_size / 10;
+
     if !status.success() {
-        if stderr_buf.contains("moov atom not found") {
+        if index_missing_text || output_too_small {
             let output = out_dir.join(format!("{stem}_reparado.mp4"));
             return recover_video(app, id, input_path, output).await.map_err(|e| {
                 format!("El video no tiene indice (moov) y la reconstruccion fallo:\n{e}")
@@ -171,6 +184,17 @@ async fn repair_video(
                 tail
             }
         ));
+    }
+
+    if output_len == 0 || output_too_small {
+        let recover_output = out_dir.join(format!("{stem}_reparado.mp4"));
+        match recover_video(app.clone(), id.clone(), input_path.clone(), recover_output).await {
+            Ok(outcome) => return Ok(outcome),
+            Err(e) if output_len == 0 => {
+                return Err(format!("El archivo reparado quedo vacio y la reconstruccion tambien fallo:\n{e}"));
+            }
+            Err(_) => {} // la reconstruccion fallo pero ya hay una salida (chica) del remux normal
+        }
     }
 
     let meta = std::fs::metadata(&output)
